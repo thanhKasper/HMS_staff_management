@@ -12,6 +12,7 @@ import {
   Search,
   UserPlus,
   LogOut,
+  ChartNoAxesCombined,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 
@@ -187,7 +188,8 @@ export default function Navbar() {
                     navigate("/workload");
                   }}
                 >
-                  <FileText className="h-4 w-4" />
+                  {/* <FileText className="h-4 w-4" /> */}
+                  <ChartNoAxesCombined className="h-4 w-4" />
                   <span>Workload Tracking</span>
                 </button>
               </li>

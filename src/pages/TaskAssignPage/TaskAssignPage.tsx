@@ -1,46 +1,41 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Calendar, Clock, User, X, Plus, Filter, Search } from "lucide-react";
+import axios from "axios";
 
 export default function TaskAssignmentPage() {
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [taskDate, setTaskDate] = useState(new Date().toISOString().split('T')[0]); // Default to today
+  const [taskDate, setTaskDate] = useState(
+    new Date().toISOString().split("T")[0]
+  ); // Default to today
   const [taskStartTime, setTaskStartTime] = useState("");
   const [taskEndTime, setTaskEndTime] = useState("");
   const [taskCategory, setTaskCategory] = useState("");
+  const [staffList, setStaffList] = useState([]);
+  const [departments, setDepartments] = useState([]);
 
-  // Sample staff data from the hospital system
-  const staffList = [
-    {
-      id: 1,
-      name: "Dr. Sarah Johnson",
-      role: "Doctor",
-      department: "Cardiology",
-      status: "Active",
-    },
-    {
-      id: 2,
-      name: "Dr. Michael Chen",
-      role: "Doctor",
-      department: "Neurology",
-      status: "Active",
-    },
-    {
-      id: 3,
-      name: "Rebecca Torres",
-      role: "Nurse",
-      department: "Registered Nurse",
-      status: "Active",
-    },
-    {
-      id: 4,
-      name: "John Patterson",
-      role: "Nurse",
-      department: "Pediatric Nurse",
-      status: "Active",
-    },
-  ];
+  useEffect(() => {
+    async function getAllStaff() {
+      const staff = (await axios.get("http://localhost:3000/api/staff")).data;
+      console.log(staff);
+      setStaffList(staff);
+    }
+    getAllStaff();
+  }, []);
+
+  useEffect(() => {
+    async function getDepartments() {
+      const department = await axios.get(
+        "http://localhost:3000/api/staff/departments"
+      );
+      console.log("Departments:");
+      console.log(department.data.department);
+      setDepartments(department.data.department);
+    }
+
+    getDepartments();
+  }, []);
 
   // Sample task categories based on staff roles
   const taskCategories = {
@@ -58,6 +53,16 @@ export default function TaskAssignmentPage() {
       "Patient Education",
       "Care Coordination",
     ],
+    Technician: [
+      "Diagnostic Testing",
+      "Equipment Maintenance",
+    ],
+    Janitor: [
+      "Cleaning and Disinfection",
+      "Waste Disposal",
+      "Inventory Management",
+      "Safety Inspections",
+    ]
   };
 
   // Sample assigned tasks - updated with start and end times
@@ -95,7 +100,14 @@ export default function TaskAssignmentPage() {
   ]);
 
   const handleAssignTask = () => {
-    if (!selectedStaff || !taskTitle || !taskDate || !taskStartTime || !taskEndTime) return;
+    if (
+      !selectedStaff ||
+      !taskTitle ||
+      !taskDate ||
+      !taskStartTime ||
+      !taskEndTime
+    )
+      return;
 
     const newTask = {
       id: assignedTasks.length + 1,
@@ -130,14 +142,27 @@ export default function TaskAssignmentPage() {
   // Format time for display
   const formatTime = (time) => {
     if (!time) return "";
-    
+
     // Convert 24-hour format to 12-hour format
-    const [hours, minutes] = time.split(':');
+    const [hours, minutes] = time.split(":");
     const hour = parseInt(hours, 10);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const ampm = hour >= 12 ? "PM" : "AM";
     const formattedHour = hour % 12 || 12; // Convert 0 to 12 for 12 AM
-    
+
     return `${formattedHour}:${minutes} ${ampm}`;
+  };
+
+  const filterStaffBasedOnDepartment = async (department: string) => {
+    console.log("filter department: ", department);
+    if (department) {
+      const filteredStaff = staffList.filter(
+        (staff) => staff.department === department
+      );
+      setStaffList(filteredStaff);
+    } else {
+      const staff = (await axios.get("http://localhost:3000/api/staff")).data;
+      setStaffList(staff);
+    }
   };
 
   return (
@@ -159,12 +184,17 @@ export default function TaskAssignmentPage() {
 
           <div className="flex gap-2 mb-4">
             <div className="w-1/2">
-              <select className="w-full p-2 border border-gray-300 rounded-lg">
-                <option>All Departments</option>
-                <option>Cardiology</option>
-                <option>Neurology</option>
-                <option>Pediatrics</option>
-                <option>Nursing</option>
+              <select
+                className="w-full p-2 border border-gray-300 rounded-lg"
+                onChange={(e) => filterStaffBasedOnDepartment(e.target.value)}
+              >
+                <option value={""}>All Departments</option>
+                {departments &&
+                  departments.map((department, index) => (
+                    <option key={index} value={department}>
+                      {department}
+                    </option>
+                  ))}
               </select>
             </div>
             <div className="w-1/2">
@@ -415,7 +445,10 @@ export default function TaskAssignmentPage() {
                             <span>•</span>
                             <div className="flex items-center">
                               <Clock className="h-3 w-3 mr-1" />
-                              <span>{formatTime(task.startTime)} - {formatTime(task.endTime)}</span>
+                              <span>
+                                {formatTime(task.startTime)} -{" "}
+                                {formatTime(task.endTime)}
+                              </span>
                             </div>
                           </div>
                         </div>

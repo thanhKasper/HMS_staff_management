@@ -1,178 +1,23 @@
-import { useState } from "react";
+import axios from "axios";
 import {
-  Search,
-  User,
+  Award,
+  Briefcase,
+  Building,
+  Calendar,
+  ChevronDown,
+  Clipboard,
+  Clock,
+  Edit,
   Mail,
   Phone,
-  Calendar,
-  Award,
-  Clipboard,
-  Edit,
   Save,
-  X,
-  ChevronDown,
-  UserPlus,
-  Trash2,
-  Briefcase,
-  Clock,
+  Search,
   Tag,
-  Building,
+  Trash2,
+  User,
+  X,
 } from "lucide-react";
-
-// Mock data for different staff types
-const mockStaff = [
-  // Doctors
-  {
-    id: 1,
-    name: "Dr. Sarah Johnson",
-    role: "Doctor",
-    specialty: "Cardiology",
-    department: "Cardiac Care",
-    email: "sarah.johnson@hospital.com",
-    phone: "(555) 123-4567",
-    joinDate: "2018-05-12",
-    education: "Johns Hopkins University School of Medicine",
-    certifications: [
-      "Board Certified in Cardiology",
-      "Advanced Cardiac Life Support",
-    ],
-    scheduleHours: "Mon-Fri: 8:00 AM - 5:00 PM",
-    patientLoad: 24,
-    status: "Active",
-    imageUrl: "/api/placeholder/150/150",
-  },
-  {
-    id: 2,
-    name: "Dr. Michael Chen",
-    role: "Doctor",
-    specialty: "Neurology",
-    department: "Neuroscience",
-    email: "michael.chen@hospital.com",
-    phone: "(555) 234-5678",
-    joinDate: "2015-08-23",
-    education: "Stanford Medical School",
-    certifications: [
-      "Board Certified in Neurology",
-      "Neurological Surgery Certification",
-    ],
-    scheduleHours: "Tue-Sat: 9:00 AM - 6:00 PM",
-    patientLoad: 18,
-    status: "Active",
-    imageUrl: "/api/placeholder/150/150",
-  },
-  // Nurses
-  {
-    id: 3,
-    name: "Rebecca Torres",
-    role: "Nurse",
-    specialty: "Registered Nurse",
-    department: "Emergency Room",
-    email: "rebecca.torres@hospital.com",
-    phone: "(555) 345-6789",
-    joinDate: "2019-03-15",
-    education: "University of Michigan School of Nursing",
-    certifications: ["Basic Life Support", "Advanced Cardiac Life Support"],
-    scheduleHours: "Wed-Sun: 7:00 AM - 7:00 PM",
-    patientLoad: 12,
-    status: "Active",
-    imageUrl: "/api/placeholder/150/150",
-  },
-  {
-    id: 4,
-    name: "John Patterson",
-    role: "Nurse",
-    specialty: "Pediatric Nurse",
-    department: "Children's Health",
-    email: "john.patterson@hospital.com",
-    phone: "(555) 456-7890",
-    joinDate: "2020-11-08",
-    education: "NYU Rory Meyers College of Nursing",
-    certifications: [
-      "Pediatric Advanced Life Support",
-      "Neonatal Resuscitation Program",
-    ],
-    scheduleHours: "Mon-Thu: 6:00 AM - 6:00 PM",
-    patientLoad: 8,
-    status: "Active",
-    imageUrl: "/api/placeholder/150/150",
-  },
-  // Technicians
-  {
-    id: 5,
-    name: "Lisa Morgan",
-    role: "Technician",
-    specialty: "Radiology Technician",
-    department: "Radiology",
-    email: "lisa.morgan@hospital.com",
-    phone: "(555) 567-8901",
-    joinDate: "2017-06-20",
-    education: "Technical College of Georgia",
-    certifications: [
-      "Registered Radiologic Technologist",
-      "MRI Safety Certification",
-    ],
-    scheduleHours: "Mon-Fri: 9:00 AM - 5:30 PM",
-    equipmentExpertise: ["X-Ray", "CT Scan", "MRI"],
-    status: "Active",
-    imageUrl: "/api/placeholder/150/150",
-  },
-  // Janitors
-  {
-    id: 6,
-    name: "Robert Garcia",
-    role: "Janitor",
-    department: "Facilities Management",
-    email: "robert.garcia@hospital.com",
-    phone: "(555) 678-9012",
-    joinDate: "2021-02-10",
-    scheduleHours: "Mon-Fri: 10:00 PM - 6:00 AM",
-    areas: ["Main Wing", "Emergency Room", "Cafeteria"],
-    certifications: ["Hazardous Materials Handling"],
-    status: "Active",
-    imageUrl: "/api/placeholder/150/150",
-  },
-  // Administrators
-  {
-    id: 7,
-    name: "Angela Brooks",
-    role: "Administrator",
-    specialty: "Financial Administrator",
-    department: "Finance",
-    email: "angela.brooks@hospital.com",
-    phone: "(555) 789-0123",
-    joinDate: "2016-09-12",
-    education: "Wharton School of Business",
-    certifications: ["Certified Healthcare Financial Professional"],
-    scheduleHours: "Mon-Fri: 8:30 AM - 5:30 PM",
-    responsibilities: [
-      "Budget Management",
-      "Financial Reporting",
-      "Insurance Claims",
-    ],
-    status: "Active",
-    imageUrl: "/api/placeholder/150/150",
-  },
-  {
-    id: 8,
-    name: "Marcus Johnson",
-    role: "Administrator",
-    specialty: "HR Manager",
-    department: "Human Resources",
-    email: "marcus.johnson@hospital.com",
-    phone: "(555) 890-1234",
-    joinDate: "2018-11-15",
-    education: "Cornell University",
-    certifications: ["Professional in Human Resources"],
-    scheduleHours: "Mon-Fri: 9:00 AM - 6:00 PM",
-    responsibilities: [
-      "Staff Recruitment",
-      "Benefits Administration",
-      "Employee Relations",
-    ],
-    status: "On Leave",
-    imageUrl: "/api/placeholder/150/150",
-  },
-];
+import { useEffect, useState } from "react";
 
 export default function HospitalStaffManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -181,9 +26,35 @@ export default function HospitalStaffManagement() {
   const [editedStaff, setEditedStaff] = useState(null);
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [staffRoles, setStaffRoles] = useState([]);
+  const [staffList, setStaffList] = useState([]);
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    async function getStaff() {
+      const staff = await axios.get("http://localhost:3000/api/staff");
+      console.log(staff.data);
+      setStaffList(staff.data);
+    }
+
+    getStaff();
+  }, []);
+
+  useEffect(() => {
+    async function getDepartments() {
+      const department = await axios.get(
+        "http://localhost:3000/api/staff/departments"
+      );
+      console.log("Departments:");
+      console.log(department.data.department);
+      setDepartments(department.data.department);
+    }
+
+    getDepartments();
+  }, []);
 
   // Filter staff based on search term and filters
-  const filteredStaff = mockStaff.filter((staff) => {
+  const filteredStaff = staffList.filter((staff) => {
     const matchesSearch =
       staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       staff.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -215,12 +86,19 @@ export default function HospitalStaffManagement() {
   };
 
   // Save edited staff profile
-  const handleSave = () => {
+  const handleSave = async () => {
     // In a real application, this would call an API to update the staff's information
     setSelectedStaff({ ...editedStaff });
+    const updateStaff = await axios.post(
+      "http://localhost:3000/api/staff/" + editedStaff.id,
+      {
+        ...editedStaff,
+      }
+    );
     setIsEditing(false);
     setEditedStaff(null);
     alert("Staff profile updated successfully!");
+    window.location.reload();
   };
 
   // Handle field changes during edit
@@ -229,7 +107,20 @@ export default function HospitalStaffManagement() {
   };
 
   // Get all unique roles from staff data
-  const staffRoles = ["", ...new Set(mockStaff.map((staff) => staff.role))];
+  // const staffRoles = ["", ...new Set(mockStaff.map((staff) => staff.role))];
+
+  // An api call to get staff roles
+  useEffect(() => {
+    async function getStaffRoles() {
+      const staffRole = await axios.get(
+        "http://localhost:3000/api/staff/roles"
+      );
+      console.log(staffRole);
+      setStaffRoles(staffRole.data.roles);
+    }
+
+    getStaffRoles();
+  }, []);
 
   // Get icon based on staff role
   const getRoleIcon = (role) => {
@@ -580,13 +471,13 @@ export default function HospitalStaffManagement() {
                     }`}
                     onClick={() => handleSelectStaff(staff)}
                   >
-                    <div className="h-12 w-12 rounded-full overflow-hidden mr-3">
+                    {/* <div className="h-12 w-12 rounded-full overflow-hidden mr-3">
                       <img
                         src={staff.imageUrl}
                         alt={staff.name}
                         className="h-full w-full object-cover"
                       />
-                    </div>
+                    </div> */}
                     <div className="flex-1">
                       <h3 className="font-medium">{staff.name}</h3>
                       <div className="flex items-center text-sm text-gray-600">
@@ -658,7 +549,7 @@ export default function HospitalStaffManagement() {
 
               {/* Staff Basic Info */}
               <div className="flex items-start mb-6">
-                <div className="h-32 w-32 rounded-lg overflow-hidden mr-6">
+                {/* <div className="h-32 w-32 rounded-lg overflow-hidden mr-6">
                   <img
                     src={
                       isEditing ? editedStaff.imageUrl : selectedStaff.imageUrl
@@ -666,7 +557,7 @@ export default function HospitalStaffManagement() {
                     alt={isEditing ? editedStaff.name : selectedStaff.name}
                     className="h-full w-full object-cover"
                   />
-                </div>
+                </div> */}
                 <div className="flex-1">
                   {isEditing ? (
                     <div className="space-y-2">
@@ -706,14 +597,27 @@ export default function HospitalStaffManagement() {
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Department
                           </label>
-                          <input
+                          {/* <input
                             type="text"
                             value={editedStaff.department}
                             onChange={(e) =>
                               handleChange("department", e.target.value)
                             }
                             className="w-full p-2 border rounded-md"
-                          />
+                          /> */}
+                          <select
+                            value={editedStaff.department}
+                            onChange={(e) =>
+                              handleChange("department", e.target.value)
+                            }
+                            className="w-full p-2 border rounded-md"
+                          >
+                            {departments && departments.map((department) => (
+                              <option key={department} value={department}>
+                                {department}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                       {(editedStaff.role === "Doctor" ||
