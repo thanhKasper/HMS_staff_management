@@ -4,6 +4,7 @@ import HospitalDashboard from "./pages/DashboardPage/DashboardPage";
 import HospitalStaffManagement from "./pages/StaffProfilePage/StaffProfile";
 import StaffScheduling from "./pages/SchedulingPage/SchedulingPage";
 import TaskAssignmentPage from "./pages/TaskAssignPage/TaskAssignPage";
+import StaffWorkloadTracker from "./pages/WorkloadTrackingPage/WorkloadTrackingPage";
 
 const route = createBrowserRouter([
   {
@@ -25,6 +26,10 @@ const route = createBrowserRouter([
       {
         path: "task-assign",
         element: <TaskAssignmentPage />,
+      },
+      {
+        path: "workload",
+        element: <StaffWorkloadTracker />,
       },
     ],
   },

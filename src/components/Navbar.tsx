@@ -177,6 +177,23 @@ export default function Navbar() {
               <li>
                 <button
                   className={`px-4 py-3 flex items-center space-x-2 border-b-2 font-medium ${
+                    activePage === "workload"
+                      ? "border-white text-white"
+                      : "border-transparent text-blue-200 hover:text-white"
+                  }`}
+                  onClick={() => {
+                    setActivePage("workload");
+                    setBreadcrumbText("Workload Tracking");
+                    navigate("/workload");
+                  }}
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Workload Tracking</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  className={`px-4 py-3 flex items-center space-x-2 border-b-2 font-medium ${
                     activePage === "settings"
                       ? "border-white text-white"
                       : "border-transparent text-blue-200 hover:text-white"
@@ -189,13 +206,13 @@ export default function Navbar() {
               </li>
             </ul>
 
-            {/* Action Button */}
+            {/* Action Button
             <div>
               <button className="bg-white text-blue-600 px-4 py-2 rounded-md font-medium flex items-center transition-all hover:bg-blue-50 shadow-sm">
                 <UserPlus className="mr-2 h-5 w-5" />
                 Add New Staff
               </button>
-            </div>
+            </div> */}
           </nav>
         </div>
       </header>
