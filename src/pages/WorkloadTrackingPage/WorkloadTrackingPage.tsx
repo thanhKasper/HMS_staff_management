@@ -1,43 +1,106 @@
-import { useState, useEffect } from "react";
 import {
-  Calendar,
-  Clock,
-  User,
-  X,
-  Filter,
-  Search,
   BarChart3,
-  PieChart,
+  Calendar,
   Calendar as CalendarIcon,
   ClipboardList,
+  Clock,
+  Search,
+  User,
+  X
 } from "lucide-react";
+import { useState } from "react";
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  ResponsiveContainer,
+  PieChart as RPieChart,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  Cell,
-  PieChart as RPieChart,
-  Pie,
 } from "recharts";
 
-export default function StaffWorkloadTracker() {
-  const [selectedStaff, setSelectedStaff] = useState(null);
-  const [activeTab, setActiveTab] = useState("daily");
-  const [selectedWeek, setSelectedWeek] = useState(getWeekStartDate());
-  const [selectedDate, setSelectedDate] = useState(
+// Type definitions
+interface StaffMember {
+  id: number;
+  name: string;
+  role: string;
+  department: string;
+  status: "Active" | "On Leave";
+  avatar: string;
+  capacity: number; // hours per week
+}
+
+interface Task {
+  id: number;
+  staffId: number;
+  title: string;
+  type: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  hours: number;
+  complexity: "Low" | "Medium" | "High";
+  status: "Completed" | "In Progress" | "Pending";
+}
+
+interface WorkloadMetrics {
+  totalHours: number;
+  taskCount: number;
+  complexityDistribution: {
+    Low: number;
+    Medium: number;
+    High: number;
+  };
+  typeDistribution: Record<string, number>;
+  utilization: number;
+}
+
+interface TaskTypeData {
+  name: string;
+  value: number;
+}
+
+interface WorkloadSummaryData {
+  name: string;
+  hours: number;
+  tasks: number;
+  utilization: number;
+  fullName: string;
+  capacity?: number;
+}
+
+interface DepartmentWorkloadData {
+  name: string;
+  hours: number;
+  tasks: number;
+  staff?: number;
+}
+
+interface WeekDay {
+  date: string;
+  label: string;
+}
+
+export default function StaffWorkloadTracker(): JSX.Element {
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+  const [activeTab, setActiveTab] = useState<"daily" | "weekly">("daily");
+  const [selectedWeek, setSelectedWeek] = useState<string>(
+    getWeekStartDate().toISOString().split("T")[0]
+  );
+  const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
-  const [filterRole, setFilterRole] = useState("All Roles");
-  const [filterDepartment, setFilterDepartment] = useState("All Departments");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [filterRole, setFilterRole] = useState<string>("All Roles");
+  const [filterDepartment, setFilterDepartment] =
+    useState<string>("All Departments");
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Sample staff data
-  const staffList = [
+  const staffList: StaffMember[] = [
     {
       id: 1,
       name: "Dr. Sarah Johnson",
@@ -95,7 +158,7 @@ export default function StaffWorkloadTracker() {
   ];
 
   // Task types by role
-  const taskTypes = {
+  const taskTypes: Record<string, string[]> = {
     Doctor: [
       "Patient Consultation",
       "Medical Procedure",
@@ -123,7 +186,7 @@ export default function StaffWorkloadTracker() {
   };
 
   // Sample tasks data
-  const [assignedTasks, setAssignedTasks] = useState([
+  const [assignedTasks, setAssignedTasks] = useState<Task[]>([
     {
       id: 1,
       staffId: 1,
@@ -308,8 +371,12 @@ export default function StaffWorkloadTracker() {
   ]);
 
   // Calculate workload metrics for staff
-  const calculateStaffWorkload = (staffId, date = null, weekStart = null) => {
-    let relevantTasks;
+  const calculateStaffWorkload = (
+    staffId: number,
+    date: string | null = null,
+    weekStart: Date | null = null
+  ): WorkloadMetrics => {
+    let relevantTasks: Task[];
 
     if (date) {
       // Daily view
@@ -346,7 +413,7 @@ export default function StaffWorkloadTracker() {
     };
 
     // Calculate task type distribution
-    const typeDistribution = {};
+    const typeDistribution: Record<string, number> = {};
     relevantTasks.forEach((task) => {
       if (!typeDistribution[task.type]) {
         typeDistribution[task.type] = 0;
@@ -356,6 +423,9 @@ export default function StaffWorkloadTracker() {
 
     // Find staff info
     const staff = staffList.find((s) => s.id === staffId);
+    if (!staff) {
+      throw new Error(`Staff member with ID ${staffId} not found`);
+    }
 
     // Calculate utilization (based on 8-hour workday)
     const dailyCapacity = 8; // hours per day
@@ -373,16 +443,17 @@ export default function StaffWorkloadTracker() {
   };
 
   // Function to get tasks for a specific date
-  const getTasksForDate = (date) => {
+  const getTasksForDate = (date: string): Task[] => {
     return assignedTasks.filter((task) => task.date === date);
   };
 
   // Function to get tasks for a specific week
-  const getTasksForWeek = (weekStart) => {
-    const weekEnd = new Date(weekStart);
+  const getTasksForWeek = (weekStart: string): Task[] => {
+    const weekStartDate = new Date(weekStart);
+    const weekEnd = new Date(weekStartDate);
     weekEnd.setDate(weekEnd.getDate() + 6);
 
-    const weekStartStr = weekStart.toISOString().split("T")[0];
+    const weekStartStr = weekStartDate.toISOString().split("T")[0];
     const weekEndStr = weekEnd.toISOString().split("T")[0];
 
     return assignedTasks.filter(
@@ -391,7 +462,7 @@ export default function StaffWorkloadTracker() {
   };
 
   // Get formatted date for display
-  function formatDate(dateString) {
+  function formatDate(dateString: string): string {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat("en-US", {
       weekday: "short",
@@ -401,8 +472,8 @@ export default function StaffWorkloadTracker() {
   }
 
   // Generate week dates
-  function getWeekDates(startDate) {
-    const dates = [];
+  function getWeekDates(startDate: string): string[] {
+    const dates: string[] = [];
     const start = new Date(startDate);
 
     for (let i = 0; i < 7; i++) {
@@ -415,7 +486,7 @@ export default function StaffWorkloadTracker() {
   }
 
   // Get week start date (Sunday)
-  function getWeekStartDate() {
+  function getWeekStartDate(): Date {
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 is Sunday
     const diff = today.getDate() - dayOfWeek;
@@ -424,7 +495,7 @@ export default function StaffWorkloadTracker() {
   }
 
   // Format week range for display
-  function formatWeekRange(startDate) {
+  function formatWeekRange(startDate: string): string {
     const start = new Date(startDate);
     const end = new Date(startDate);
     end.setDate(end.getDate() + 6);
@@ -439,7 +510,7 @@ export default function StaffWorkloadTracker() {
   }
 
   // Format time for display
-  const formatTime = (time) => {
+  const formatTime = (time: string): string => {
     if (!time) return "";
 
     const [hours, minutes] = time.split(":");
@@ -464,14 +535,17 @@ export default function StaffWorkloadTracker() {
   });
 
   // Get unique roles and departments for filters
-  const roles = ["All Roles", ...new Set(staffList.map((staff) => staff.role))];
+  const roles = [
+    "All Roles",
+    ...Array.from(new Set(staffList.map((staff) => staff.role))),
+  ];
   const departments = [
     "All Departments",
-    ...new Set(staffList.map((staff) => staff.department)),
+    ...Array.from(new Set(staffList.map((staff) => staff.department))),
   ];
 
   // Generate workload summary data for charts
-  const generateWorkloadSummary = () => {
+  const generateWorkloadSummary = (): WorkloadSummaryData[] => {
     if (activeTab === "daily") {
       // For daily view
       const dailyData = filteredStaff.map((staff) => {
@@ -506,7 +580,7 @@ export default function StaffWorkloadTracker() {
   };
 
   // For task type distribution chart
-  const generateTaskTypeData = (staffId) => {
+  const generateTaskTypeData = (staffId: number | null): TaskTypeData[] => {
     if (!staffId) return [];
 
     const relevantTasks =
@@ -518,7 +592,7 @@ export default function StaffWorkloadTracker() {
             (task) => task.staffId === staffId
           );
 
-    const typeCount = {};
+    const typeCount: Record<string, number> = {};
     relevantTasks.forEach((task) => {
       if (!typeCount[task.type]) {
         typeCount[task.type] = 0;
@@ -544,7 +618,7 @@ export default function StaffWorkloadTracker() {
   ];
 
   // Generate day labels for the week
-  const weekDays = getWeekDates(selectedWeek).map((date) => ({
+  const weekDays: WeekDay[] = getWeekDates(selectedWeek).map((date) => ({
     date,
     label: new Date(date).toLocaleDateString("en-US", { weekday: "short" }),
   }));
@@ -780,7 +854,7 @@ export default function StaffWorkloadTracker() {
                     }}
                   />
                   <Tooltip
-                    formatter={(value, name) => {
+                    formatter={(value: number, name: string) => {
                       if (name === "utilization")
                         return [`${Math.round(value)}%`, "Utilization"];
                       if (name === "hours") return [`${value} hrs`, "Hours"];
@@ -844,12 +918,10 @@ export default function StaffWorkloadTracker() {
               <div className="grid md:grid-cols-2 gap-4">
                 {/* Left column - Stats */}
                 <div>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h3 className="text-sm font-medium text-blue-800">
-                        Total Hours
-                      </h3>
-                      <p className="text-2xl font-bold text-blue-600">
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <h3 className="text-xs text-gray-500">Total Hours</h3>
+                      <p className="text-xl font-bold">
                         {activeTab === "daily"
                           ? calculateStaffWorkload(
                               selectedStaff.id,
@@ -861,17 +933,10 @@ export default function StaffWorkloadTracker() {
                               new Date(selectedWeek)
                             ).totalHours}
                       </p>
-                      <p className="text-xs text-blue-600">
-                        {activeTab === "daily"
-                          ? "8 hour capacity"
-                          : `${selectedStaff.capacity} hour weekly capacity`}
-                      </p>
                     </div>
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <h3 className="text-sm font-medium text-green-800">
-                        Tasks Assigned
-                      </h3>
-                      <p className="text-2xl font-bold text-green-600">
+                    <div className="p-3 bg-green-50 rounded-lg">
+                      <h3 className="text-xs text-gray-500">Tasks</h3>
+                      <p className="text-xl font-bold">
                         {activeTab === "daily"
                           ? calculateStaffWorkload(
                               selectedStaff.id,
@@ -883,65 +948,10 @@ export default function StaffWorkloadTracker() {
                               new Date(selectedWeek)
                             ).taskCount}
                       </p>
-                      <p className="text-xs text-green-600">
-                        {activeTab === "daily"
-                          ? "Daily assignments"
-                          : "Weekly assignments"}
-                      </p>
                     </div>
-                  </div>
-
-                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">
-                      Utilization
-                    </h3>
-                    <div className="flex items-center">
-                      <div className="w-full bg-gray-200 rounded-full h-4 mr-2">
-                        <div
-                          className={`h-4 rounded-full ${
-                            activeTab === "daily"
-                              ? calculateStaffWorkload(
-                                  selectedStaff.id,
-                                  selectedDate
-                                ).utilization > 90
-                                ? "bg-red-500"
-                                : calculateStaffWorkload(
-                                    selectedStaff.id,
-                                    selectedDate
-                                  ).utilization > 75
-                                ? "bg-yellow-500"
-                                : "bg-green-500"
-                              : calculateStaffWorkload(
-                                  selectedStaff.id,
-                                  null,
-                                  new Date(selectedWeek)
-                                ).utilization > 90
-                              ? "bg-red-500"
-                              : calculateStaffWorkload(
-                                  selectedStaff.id,
-                                  null,
-                                  new Date(selectedWeek)
-                                ).utilization > 75
-                              ? "bg-yellow-500"
-                              : "bg-green-500"
-                          }`}
-                          style={{
-                            width: `${
-                              activeTab === "daily"
-                                ? calculateStaffWorkload(
-                                    selectedStaff.id,
-                                    selectedDate
-                                  ).utilization
-                                : calculateStaffWorkload(
-                                    selectedStaff.id,
-                                    null,
-                                    new Date(selectedWeek)
-                                  ).utilization
-                            }%`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-lg font-bold">
+                    <div className="p-3 bg-yellow-50 rounded-lg">
+                      <h3 className="text-xs text-gray-500">Utilization</h3>
+                      <p className="text-xl font-bold">
                         {Math.round(
                           activeTab === "daily"
                             ? calculateStaffWorkload(
@@ -955,16 +965,16 @@ export default function StaffWorkloadTracker() {
                               ).utilization
                         )}
                         %
-                      </span>
+                      </p>
                     </div>
                   </div>
 
-                  {/* Task type distribution chart */}
-                  <div className="bg-white border border-gray-200 p-4 rounded-lg">
-                    <h3 className="text-sm font-medium text-gray-700 mb-4">
-                      Task Distribution
+                  {/* Task Type Distribution */}
+                  <div className="mt-6">
+                    <h3 className="text-sm font-semibold mb-2">
+                      Task Type Distribution
                     </h3>
-                    <div className="h-48">
+                    <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
                         <RPieChart>
                           <Pie
@@ -972,12 +982,14 @@ export default function StaffWorkloadTracker() {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }) =>
-                              `${name}: ${(percent * 100).toFixed(0)}%`
-                            }
                             outerRadius={80}
                             fill="#8884d8"
                             dataKey="value"
+                            label={({ name, value, percent }) =>
+                              `${name}: ${value} (${(percent * 100).toFixed(
+                                0
+                              )}%)`
+                            }
                           >
                             {generateTaskTypeData(selectedStaff.id).map(
                               (entry, index) => (
@@ -988,450 +1000,290 @@ export default function StaffWorkloadTracker() {
                               )
                             )}
                           </Pie>
-                          <Tooltip formatter={(value, name) => [value, name]} />
+                          <Tooltip formatter={(value) => [value, "Tasks"]} />
                         </RPieChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
                 </div>
 
-                {/* Right column - Tasks List */}
+                {/* Right column - Tasks */}
                 <div>
-                  <div className="bg-white border border-gray-200 p-4 rounded-lg">
-                    <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center gap-2">
-                      <ClipboardList className="h-4 w-4 text-blue-600" />
-                      {activeTab === "daily"
-                        ? `Tasks for ${formatDate(selectedDate)}`
-                        : `Tasks for Week of ${formatWeekRange(selectedWeek)}`}
-                    </h3>
-
-                    <div className="max-h-96 overflow-y-auto">
-                      {(activeTab === "daily"
-                        ? assignedTasks.filter(
+                  <h3 className="text-sm font-semibold mb-2">
+                    {activeTab === "daily"
+                      ? `Tasks for ${formatDate(selectedDate)}`
+                      : `Tasks for ${formatWeekRange(selectedWeek)}`}
+                  </h3>
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {activeTab === "daily"
+                      ? assignedTasks
+                          .filter(
                             (task) =>
                               task.staffId === selectedStaff.id &&
                               task.date === selectedDate
                           )
-                        : getTasksForWeek(selectedWeek).filter(
-                            (task) => task.staffId === selectedStaff.id
-                          )
-                      ).length > 0 ? (
-                        <div className="space-y-3">
-                          {(activeTab === "daily"
-                            ? assignedTasks.filter(
-                                (task) =>
-                                  task.staffId === selectedStaff.id &&
-                                  task.date === selectedDate
-                              )
-                            : getTasksForWeek(selectedWeek).filter(
-                                (task) => task.staffId === selectedStaff.id
-                              )
-                          )
-                            .sort(
-                              (a, b) =>
-                                a.date.localeCompare(b.date) ||
-                                a.startTime.localeCompare(b.startTime)
-                            )
-                            .map((task) => (
-                              <div
-                                key={task.id}
-                                className="border rounded-lg p-3 bg-gray-50"
-                              >
-                                <div className="flex justify-between">
-                                  <h4 className="font-medium">{task.title}</h4>
-                                  <span
-                                    className={`text-xs px-2 py-1 rounded-full ${
-                                      task.status === "Completed"
-                                        ? "bg-green-100 text-green-800"
-                                        : task.status === "In Progress"
-                                        ? "bg-blue-100 text-blue-800"
-                                        : "bg-gray-100 text-gray-800"
-                                    }`}
-                                  >
-                                    {task.status}
-                                  </span>
+                          .map((task) => (
+                            <div
+                              key={task.id}
+                              className="border border-gray-200 rounded-lg p-3"
+                            >
+                              <div className="flex justify-between items-start">
+                                <h4 className="font-medium">{task.title}</h4>
+                                <span
+                                  className={`px-2 py-0.5 text-xs rounded-full ${
+                                    task.status === "Completed"
+                                      ? "bg-green-100 text-green-800"
+                                      : task.status === "In Progress"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-gray-100 text-gray-800"
+                                  }`}
+                                >
+                                  {task.status}
+                                </span>
+                              </div>
+                              <div className="mt-2 grid grid-cols-3 text-xs text-gray-500">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {formatTime(task.startTime)} -{" "}
+                                  {formatTime(task.endTime)}
                                 </div>
-                                <div className="text-sm text-gray-600 mt-1">
-                                  <p>Type: {task.type}</p>
-                                  <div className="flex justify-between mt-1">
-                                    <p>
-                                      <Calendar className="h-3 w-3 inline mr-1" />
-                                      {formatDate(task.date)}
-                                    </p>
-                                    <p>
-                                      <Clock className="h-3 w-3 inline mr-1" />
-                                      {formatTime(task.startTime)} -{" "}
-                                      {formatTime(task.endTime)}
-                                    </p>
-                                    <p className="font-medium">
-                                      {task.hours} hrs
-                                    </p>
-                                  </div>
-                                  <p className="mt-1">
-                                    <span
-                                      className={`text-xs px-2 py-0.5 rounded-full ${
-                                        task.complexity === "High"
-                                          ? "bg-red-100 text-red-800"
-                                          : task.complexity === "Medium"
-                                          ? "bg-yellow-100 text-yellow-800"
-                                          : "bg-green-100 text-green-800"
-                                      }`}
-                                    >
-                                      {task.complexity} Complexity
-                                    </span>
-                                  </p>
+                                <div>{task.type}</div>
+                                <div className="flex items-center gap-1">
+                                  <span
+                                    className={`h-2 w-2 rounded-full ${
+                                      task.complexity === "High"
+                                        ? "bg-red-500"
+                                        : task.complexity === "Medium"
+                                        ? "bg-yellow-500"
+                                        : "bg-green-500"
+                                    }`}
+                                  ></span>
+                                  {task.complexity} Complexity
                                 </div>
                               </div>
-                            ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-10 text-gray-500">
-                          No tasks assigned for this time period
-                        </div>
-                      )}
-                    </div>
+                            </div>
+                          ))
+                      : // Weekly tasks
+                        getTasksForWeek(selectedWeek)
+                          .filter((task) => task.staffId === selectedStaff.id)
+                          .sort((a, b) => a.date.localeCompare(b.date))
+                          .map((task) => (
+                            <div
+                              key={task.id}
+                              className="border border-gray-200 rounded-lg p-3"
+                            >
+                              <div className="flex justify-between items-start">
+                                <h4 className="font-medium">{task.title}</h4>
+                                <span
+                                  className={`px-2 py-0.5 text-xs rounded-full ${
+                                    task.status === "Completed"
+                                      ? "bg-green-100 text-green-800"
+                                      : task.status === "In Progress"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-gray-100 text-gray-800"
+                                  }`}
+                                >
+                                  {task.status}
+                                </span>
+                              </div>
+                              <div className="mt-2 grid grid-cols-4 text-xs text-gray-500">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {formatDate(task.date)}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {formatTime(task.startTime)} -{" "}
+                                  {formatTime(task.endTime)}
+                                </div>
+                                <div>{task.type}</div>
+                                <div className="flex items-center gap-1">
+                                  <span
+                                    className={`h-2 w-2 rounded-full ${
+                                      task.complexity === "High"
+                                        ? "bg-red-500"
+                                        : task.complexity === "Medium"
+                                        ? "bg-yellow-500"
+                                        : "bg-green-500"
+                                    }`}
+                                  ></span>
+                                  {task.complexity} Complexity
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Weekly view calendar (when in weekly mode) */}
+          {/* Weekly Calendar (for weekly view) */}
           {activeTab === "weekly" && !selectedStaff && (
             <div className="bg-white rounded-lg shadow p-4">
               <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-blue-600" />
-                Weekly Schedule Overview
+                <ClipboardList className="h-5 w-5 text-blue-600" />
+                Weekly Staff Schedule
               </h2>
 
-              <div className="grid grid-cols-7 gap-2">
-                {weekDays.map((day) => {
-                  const dayTasks = getTasksForDate(day.date);
-                  const uniqueStaffCount = new Set(
-                    dayTasks.map((task) => task.staffId)
-                  ).size;
-                  const totalHours = dayTasks.reduce(
-                    (sum, task) => sum + task.hours,
-                    0
-                  );
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="border border-gray-200 p-2 bg-gray-50 text-left">
+                        Staff
+                      </th>
+                      {weekDays.map((day) => (
+                        <th
+                          key={day.date}
+                          className="border border-gray-200 p-2 bg-gray-50 text-center"
+                        >
+                          {day.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredStaff.map((staff) => (
+                      <tr key={staff.id}>
+                        <td className="border border-gray-200 p-2 font-medium">
+                          {staff.name}
+                        </td>
+                        {weekDays.map((day) => {
+                          const dayTasks = assignedTasks.filter(
+                            (task) =>
+                              task.staffId === staff.id &&
+                              task.date === day.date
+                          );
+                          const dayHours = dayTasks.reduce(
+                            (sum, task) => sum + task.hours,
+                            0
+                          );
 
-                  return (
-                    <div
-                      key={day.date}
-                      className={`border rounded-lg p-3 ${
-                        day.date === new Date().toISOString().split("T")[0]
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-gray-200"
-                      }`}
-                    >
-                      <div className="text-center mb-2">
-                        <p className="font-medium">{day.label}</p>
-                        <p className="text-sm text-gray-600">
-                          {day.date.split("-").slice(1).join("/")}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-2xl font-bold">{dayTasks.length}</p>
-                        <p className="text-xs text-gray-600">Tasks</p>
-                      </div>
-                      <div className="flex justify-between text-sm mt-2 text-gray-600">
-                        <span>{uniqueStaffCount} Staff</span>
-                        <span>{totalHours} hrs</span>
-                      </div>
-                    </div>
-                  );
-                })}
+                          return (
+                            <td
+                              key={day.date}
+                              className="border border-gray-200 p-1 text-center"
+                            >
+                              {dayTasks.length > 0 ? (
+                                <div
+                                  className={`text-xs p-1 rounded ${
+                                    dayHours > 8
+                                      ? "bg-red-100"
+                                      : dayHours > 6
+                                      ? "bg-yellow-100"
+                                      : "bg-green-100"
+                                  }`}
+                                >
+                                  <div className="font-semibold">
+                                    {dayHours} hrs
+                                  </div>
+                                  <div className="text-gray-600">
+                                    {dayTasks.length} tasks
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 text-xs">
+                                  No tasks
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
 
-          {/* Daily view - Department summary */}
+          {/* Daily schedule (for daily view) */}
           {activeTab === "daily" && !selectedStaff && (
             <div className="bg-white rounded-lg shadow p-4">
               <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <PieChart className="h-5 w-5 text-blue-600" />
-                Department Workload Distribution
+                <ClipboardList className="h-5 w-5 text-blue-600" />
+                Daily Staff Schedule for {formatDate(selectedDate)}
               </h2>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                {/* Department workload */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">
-                    Staff Hours by Department
-                  </h3>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={(() => {
-                          const deptData = {};
-                          const tasks = getTasksForDate(selectedDate);
+              <div className="space-y-4">
+                {filteredStaff
+                  .filter((staff) =>
+                    assignedTasks.some(
+                      (task) =>
+                        task.staffId === staff.id && task.date === selectedDate
+                    )
+                  )
+                  .map((staff) => {
+                    const staffTasks = assignedTasks.filter(
+                      (task) =>
+                        task.staffId === staff.id && task.date === selectedDate
+                    );
 
-                          tasks.forEach((task) => {
-                            const staff = staffList.find(
-                              (s) => s.id === task.staffId
-                            );
-                            if (!staff) return;
-
-                            if (!deptData[staff.department]) {
-                              deptData[staff.department] = {
-                                name: staff.department,
-                                hours: 0,
-                                tasks: 0,
-                              };
-                            }
-
-                            deptData[staff.department].hours += task.hours;
-                            deptData[staff.department].tasks += 1;
-                          });
-
-                          return Object.values(deptData);
-                        })()}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    return (
+                      <div
+                        key={staff.id}
+                        className="border border-gray-200 rounded-lg p-3"
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="hours" name="Hours" fill="#8884d8" />
-                        <Bar dataKey="tasks" name="Tasks" fill="#82ca9d" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                        <div className="flex items-center gap-2 mb-2">
+                          <img
+                            src={staff.avatar}
+                            alt=""
+                            className="h-8 w-8 rounded-full bg-gray-200"
+                          />
+                          <h3 className="font-medium">{staff.name}</h3>
+                          <span className="text-sm text-gray-500">
+                            {staffTasks.reduce(
+                              (sum, task) => sum + task.hours,
+                              0
+                            )}{" "}
+                            hours
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {staffTasks.map((task) => (
+                            <div
+                              key={task.id}
+                              className={`p-2 rounded-md text-sm ${
+                                task.status === "Completed"
+                                  ? "bg-green-50 border border-green-200"
+                                  : task.status === "In Progress"
+                                  ? "bg-yellow-50 border border-yellow-200"
+                                  : "bg-gray-50 border border-gray-200"
+                              }`}
+                            >
+                              <div className="font-medium">{task.title}</div>
+                              <div className="text-xs text-gray-500 flex justify-between mt-1">
+                                <span>
+                                  {formatTime(task.startTime)} -{" "}
+                                  {formatTime(task.endTime)}
+                                </span>
+                                <span>{task.hours} hrs</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {/* No tasks message */}
+                {filteredStaff.filter((staff) =>
+                  assignedTasks.some(
+                    (task) =>
+                      task.staffId === staff.id && task.date === selectedDate
+                  )
+                ).length === 0 && (
+                  <div className="text-center p-6 text-gray-500">
+                    No tasks scheduled for the selected date.
                   </div>
-                </div>
-
-                {/* Task complexity distribution */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">
-                    Task Complexity Distribution
-                  </h3>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RPieChart>
-                        <Pie
-                          data={(() => {
-                            const tasks = getTasksForDate(selectedDate);
-                            const complexityCount = {
-                              Low: tasks.filter((t) => t.complexity === "Low")
-                                .length,
-                              Medium: tasks.filter(
-                                (t) => t.complexity === "Medium"
-                              ).length,
-                              High: tasks.filter((t) => t.complexity === "High")
-                                .length,
-                            };
-
-                            return [
-                              { name: "Low", value: complexityCount.Low },
-                              { name: "Medium", value: complexityCount.Medium },
-                              { name: "High", value: complexityCount.High },
-                            ].filter((item) => item.value > 0);
-                          })()}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) =>
-                            `${name}: ${(percent * 100).toFixed(0)}%`
-                          }
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          <Cell fill="#10b981" /> {/* Low - Green */}
-                          <Cell fill="#f59e0b" /> {/* Medium - Yellow */}
-                          <Cell fill="#ef4444" /> {/* High - Red */}
-                        </Pie>
-                        <Tooltip />
-                      </RPieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Additional Analytics for Hospital Context */}
-          {!selectedStaff && (
-            <div className="bg-white rounded-lg shadow p-4">
-              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-blue-600" />
-                Hospital Staff Workload Insights
-              </h2>
-
-              <div className="grid md:grid-cols-3 gap-4 mb-4">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h3 className="text-sm font-medium text-blue-800">
-                    Staff Utilization
-                  </h3>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {Math.round(
-                      activeTab === "daily"
-                        ? filteredStaff.reduce(
-                            (sum, staff) =>
-                              sum +
-                              calculateStaffWorkload(staff.id, selectedDate)
-                                .utilization,
-                            0
-                          ) / filteredStaff.length
-                        : filteredStaff.reduce(
-                            (sum, staff) =>
-                              sum +
-                              calculateStaffWorkload(
-                                staff.id,
-                                null,
-                                new Date(selectedWeek)
-                              ).utilization,
-                            0
-                          ) / filteredStaff.length
-                    )}
-                    %
-                  </p>
-                  <p className="text-xs text-blue-600">
-                    Average across all departments
-                  </p>
-                </div>
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <h3 className="text-sm font-medium text-green-800">
-                    Active Staff Members
-                  </h3>
-                  <p className="text-2xl font-bold text-green-600">
-                    {
-                      staffList.filter((staff) => staff.status === "Active")
-                        .length
-                    }
-                  </p>
-                  <p className="text-xs text-green-600">
-                    Out of {staffList.length} total
-                  </p>
-                </div>
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <h3 className="text-sm font-medium text-purple-800">
-                    Total Assigned Hours
-                  </h3>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {activeTab === "daily"
-                      ? getTasksForDate(selectedDate).reduce(
-                          (sum, task) => sum + task.hours,
-                          0
-                        )
-                      : getTasksForWeek(selectedWeek).reduce(
-                          (sum, task) => sum + task.hours,
-                          0
-                        )}
-                  </p>
-                  <p className="text-xs text-purple-600">
-                    {activeTab === "daily"
-                      ? "Today's workload"
-                      : "This week's workload"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Department workload comparison */}
-              <div className="bg-white border border-gray-200 p-4 rounded-lg">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">
-                  {activeTab === "daily" ? "Today's" : "Weekly"} Department
-                  Workload Distribution
-                </h3>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={(() => {
-                        const deptData = {};
-                        const tasks =
-                          activeTab === "daily"
-                            ? getTasksForDate(selectedDate)
-                            : getTasksForWeek(selectedWeek);
-
-                        departments
-                          .filter((d) => d !== "All Departments")
-                          .forEach((dept) => {
-                            deptData[dept] = {
-                              name: dept,
-                              hours: 0,
-                              tasks: 0,
-                              staff: 0,
-                            };
-                          });
-
-                        // Count staff by department
-                        staffList.forEach((staff) => {
-                          if (deptData[staff.department]) {
-                            deptData[staff.department].staff += 1;
-                          }
-                        });
-
-                        // Sum tasks and hours by department
-                        tasks.forEach((task) => {
-                          const staff = staffList.find(
-                            (s) => s.id === task.staffId
-                          );
-                          if (!staff || !deptData[staff.department]) return;
-
-                          deptData[staff.department].hours += task.hours;
-                          deptData[staff.department].tasks += 1;
-                        });
-
-                        return Object.values(deptData);
-                      })()}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis
-                        yAxisId="left"
-                        orientation="left"
-                        label={{
-                          value: "Hours/Tasks",
-                          angle: -90,
-                          position: "insideLeft",
-                        }}
-                      />
-                      <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        label={{
-                          value: "Staff Count",
-                          angle: 90,
-                          position: "insideRight",
-                        }}
-                      />
-                      <Tooltip />
-                      <Legend />
-                      <Bar
-                        yAxisId="left"
-                        dataKey="hours"
-                        name="Total Hours"
-                        fill="#8884d8"
-                      />
-                      <Bar
-                        yAxisId="left"
-                        dataKey="tasks"
-                        name="Task Count"
-                        fill="#82ca9d"
-                      />
-                      <Bar
-                        yAxisId="right"
-                        dataKey="staff"
-                        name="Staff Count"
-                        fill="#ffc658"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                )}
               </div>
             </div>
           )}
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="bg-white shadow-sm p-4 border-t mt-auto">
-        <div className="container mx-auto text-center text-gray-600 text-sm">
-          Hospital Staff Workload Tracker • Last Updated:{" "}
-          {new Date().toLocaleDateString()}
-        </div>
-      </footer>
     </div>
   );
 }

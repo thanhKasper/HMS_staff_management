@@ -2,22 +2,49 @@ import { useEffect, useState } from "react";
 import { Calendar, Clock, User, X, Plus, Filter, Search } from "lucide-react";
 import axios from "axios";
 
+// Define types for our data structures
+interface Staff {
+  id: number;
+  name: string;
+  role: string;
+  department: string;
+  status: string;
+}
+
+interface Task {
+  id: number;
+  staffId: number;
+  title: string;
+  category: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  description?: string;
+}
+
+type TaskCategoryMap = {
+  [key: string]: string[];
+};
+
 export default function TaskAssignmentPage() {
-  const [selectedStaff, setSelectedStaff] = useState(null);
-  const [taskTitle, setTaskTitle] = useState("");
-  const [taskDescription, setTaskDescription] = useState("");
-  const [taskDate, setTaskDate] = useState(
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const [taskTitle, setTaskTitle] = useState<string>("");
+  const [taskDescription, setTaskDescription] = useState<string>("");
+  const [taskDate, setTaskDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   ); // Default to today
-  const [taskStartTime, setTaskStartTime] = useState("");
-  const [taskEndTime, setTaskEndTime] = useState("");
-  const [taskCategory, setTaskCategory] = useState("");
-  const [staffList, setStaffList] = useState([]);
-  const [departments, setDepartments] = useState([]);
+  const [taskStartTime, setTaskStartTime] = useState<string>("");
+  const [taskEndTime, setTaskEndTime] = useState<string>("");
+  const [taskCategory, setTaskCategory] = useState<string>("");
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
 
   useEffect(() => {
     async function getAllStaff() {
-      const staff = (await axios.get("http://localhost:3000/api/staff")).data;
+      const staff = (
+        await axios.get<Staff[]>("http://localhost:3000/api/staff")
+      ).data;
       console.log(staff);
       setStaffList(staff);
     }
@@ -26,7 +53,7 @@ export default function TaskAssignmentPage() {
 
   useEffect(() => {
     async function getDepartments() {
-      const department = await axios.get(
+      const department = await axios.get<{ department: string[] }>(
         "http://localhost:3000/api/staff/departments"
       );
       console.log("Departments:");
@@ -38,7 +65,7 @@ export default function TaskAssignmentPage() {
   }, []);
 
   // Sample task categories based on staff roles
-  const taskCategories = {
+  const taskCategories: TaskCategoryMap = {
     Doctor: [
       "Patient Consultation",
       "Medical Procedure",
@@ -53,53 +80,29 @@ export default function TaskAssignmentPage() {
       "Patient Education",
       "Care Coordination",
     ],
-    Technician: [
-      "Diagnostic Testing",
-      "Equipment Maintenance",
-    ],
+    Technician: ["Diagnostic Testing", "Equipment Maintenance"],
     Janitor: [
       "Cleaning and Disinfection",
       "Waste Disposal",
       "Inventory Management",
       "Safety Inspections",
-    ]
+    ],
   };
 
   // Sample assigned tasks - updated with start and end times
-  const [assignedTasks, setAssignedTasks] = useState([
-    {
-      id: 1,
-      staffId: 1,
-      title: "Review Cardiac Test Results",
-      category: "Diagnostic Review",
-      date: "2025-04-16",
-      startTime: "10:30",
-      endTime: "11:30",
-      status: "Pending",
-    },
-    {
-      id: 2,
-      staffId: 2,
-      title: "Neurological Assessment for Room 302",
-      category: "Patient Consultation",
-      date: "2025-04-15",
-      startTime: "14:15",
-      endTime: "15:00",
-      status: "Pending",
-    },
-    {
-      id: 3,
-      staffId: 3,
-      title: "Administer Medications to Ward B",
-      category: "Medication Administration",
-      date: "2025-04-14",
-      startTime: "08:00",
-      endTime: "09:00",
-      status: "In Progress",
-    },
-  ]);
+  const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
 
-  const handleAssignTask = () => {
+  useEffect(() => {
+    async function getAllTasks() {
+      const tasks = await axios.get<Task[]>("http://localhost:3000/api/tasks");
+      console.log("Tasks:");
+      console.log(tasks.data);
+      setAssignedTasks(tasks.data);
+    }
+    getAllTasks();
+  }, []);
+
+  const handleAssignTask = async (): Promise<void> => {
     if (
       !selectedStaff ||
       !taskTitle ||
@@ -110,17 +113,23 @@ export default function TaskAssignmentPage() {
       return;
 
     const newTask = {
-      id: assignedTasks.length + 1,
+      // id: assignedTasks.length + 1,
       staffId: selectedStaff.id,
       title: taskTitle,
       category: taskCategory,
       date: taskDate,
       startTime: taskStartTime,
       endTime: taskEndTime,
-      status: "Pending",
+      // status: "Pending",
     };
 
-    setAssignedTasks([...assignedTasks, newTask]);
+    const newTaskCreate = (
+      await axios.post<Task>("http://localhost:3000/api/tasks/", {
+        ...newTask,
+      })
+    ).data;
+
+    setAssignedTasks([...assignedTasks, newTaskCreate]);
 
     // Reset form
     setTaskTitle("");
@@ -131,16 +140,16 @@ export default function TaskAssignmentPage() {
     setTaskEndTime("");
   };
 
-  const filterTasksByStaff = (staffId) => {
+  const filterTasksByStaff = (staffId: number): Task[] => {
     return assignedTasks.filter((task) => task.staffId === staffId);
   };
 
-  const getStaffById = (staffId) => {
+  const getStaffById = (staffId: number): Staff | undefined => {
     return staffList.find((staff) => staff.id === staffId);
   };
 
   // Format time for display
-  const formatTime = (time) => {
+  const formatTime = (time: string): string => {
     if (!time) return "";
 
     // Convert 24-hour format to 12-hour format
@@ -152,7 +161,9 @@ export default function TaskAssignmentPage() {
     return `${formattedHour}:${minutes} ${ampm}`;
   };
 
-  const filterStaffBasedOnDepartment = async (department: string) => {
+  const filterStaffBasedOnDepartment = async (
+    department: string
+  ): Promise<void> => {
     console.log("filter department: ", department);
     if (department) {
       const filteredStaff = staffList.filter(
@@ -160,7 +171,23 @@ export default function TaskAssignmentPage() {
       );
       setStaffList(filteredStaff);
     } else {
-      const staff = (await axios.get("http://localhost:3000/api/staff")).data;
+      const staff = (
+        await axios.get<Staff[]>("http://localhost:3000/api/staff")
+      ).data;
+      setStaffList(staff);
+    }
+  };
+
+  const filterStaffBasedOnStatus = async (status: string): Promise<void> => {
+    if (status) {
+      const filteredStaff = staffList.filter(
+        (staff) => staff.status === status
+      );
+      setStaffList(filteredStaff);
+    } else {
+      const staff = (
+        await axios.get<Staff[]>("http://localhost:3000/api/staff")
+      ).data;
       setStaffList(staff);
     }
   };
@@ -198,11 +225,14 @@ export default function TaskAssignmentPage() {
               </select>
             </div>
             <div className="w-1/2">
-              <select className="w-full p-2 border border-gray-300 rounded-lg">
-                <option>All Status</option>
-                <option>Active</option>
-                <option>Inactive</option>
-                <option>On Leave</option>
+              <select
+                className="w-full p-2 border border-gray-300 rounded-lg"
+                onChange={(e) => filterStaffBasedOnStatus(e.target.value)}
+              >
+                <option value="">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="On Leave">On Leave</option>
               </select>
             </div>
           </div>
@@ -355,7 +385,7 @@ export default function TaskAssignmentPage() {
                   </label>
                   <textarea
                     className="w-full p-2 border border-gray-300 rounded-lg"
-                    rows="3"
+                    rows={3}
                     placeholder="Enter task description"
                     value={taskDescription}
                     onChange={(e) => setTaskDescription(e.target.value)}
