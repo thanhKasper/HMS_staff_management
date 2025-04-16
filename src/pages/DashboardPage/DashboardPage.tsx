@@ -7,9 +7,8 @@ import {
   Clock,
   CloudRain,
   User,
-  Users
+  Users,
 } from "lucide-react";
-import { useState } from "react";
 import {
   Bar,
   BarChart,
@@ -19,7 +18,7 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
-  YAxis
+  YAxis,
 } from "recharts";
 
 // Mock data
@@ -188,10 +187,10 @@ const pieColors = [
 ];
 
 export default function HospitalDashboard() {
-  const [selectedView, setSelectedView] = useState("overview");
+  // const [selectedView, setSelectedView] = useState("overview");
 
   // Function to calculate bed availability percentage
-  const calculateAvailability = (available, total) => {
+  const calculateAvailability = (available: number, total: number) => {
     return ((available / total) * 100).toFixed(0);
   };
 
@@ -314,7 +313,7 @@ export default function HospitalDashboard() {
                       formatter={(value) => [`${value}%`, "Occupancy"]}
                     />
                     <Bar dataKey="occupancy" fill="#8884d8">
-                      {departmentOccupancyData.map((entry, index) => (
+                      {departmentOccupancyData.map((_, index) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={pieColors[index % pieColors.length]}

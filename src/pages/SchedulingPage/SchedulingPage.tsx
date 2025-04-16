@@ -430,9 +430,9 @@ export default function StaffSchedulingPage(): JSX.Element {
 
                           if (overlappingTask && isTaskStart) {
                             // Calculate how many slots this task spans
-                            const taskStart = timeToDecimal(
-                              overlappingTask.startTime
-                            );
+                            // const taskStart = timeToDecimal(
+                            //   overlappingTask.startTime
+                            // );
                             const taskEnd = timeToDecimal(
                               overlappingTask.endTime
                             );
